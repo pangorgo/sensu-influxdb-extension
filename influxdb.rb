@@ -21,6 +21,8 @@ module Sensu::Extension
     end
 
     def post_init()
+      @buffer = {}
+      @flush_timer = {}
       @influx_conf = parse_settings
       @influx_conf.keys.each do |instance|
         logger.info("InfluxDB extension initialiazed using instance named #{instance} #{@influx_conf[instance]['protocol'] }://#{ @influx_conf[instance]['host'] }:#{ @influx_conf[instance]['port'] } - Defaults : db=#{@influx_conf[instance]['database']} precision=#{@influx_conf[instance]['time_precision']}")
@@ -114,7 +116,7 @@ module Sensu::Extension
 
     def parse_event(event_data)
       begin
-        event = MultiJson.load(event_data)
+        event = MultiJson.load(event_data, :symbolize_keys => true)
 
         # default values
         # n, u, ms, s, m, and h (default community plugins use standard epoch date)
@@ -131,14 +133,14 @@ module Sensu::Extension
 
     def parse_settings()
       begin
-        settings = @settings
+        settings = @settings['influxdb']
 
         settings.keys.each do |key|
           # default values
           settings[key]['tags'] ||= {}
           settings[key]['use_ssl'] ||= false
           settings[key]['time_precision'] ||= 's'
-          settings[key]['protocol'] = settings['use_ssl'] ? 'https' : 'http'
+          settings[key]['protocol'] = settings[key]['use_ssl'] ? 'https' : 'http'
           settings[key]['buffer_max_size'] ||= 500
           settings[key]['buffer_max_age'] ||= 6 # seconds
           settings[key]['port'] ||= 8086
